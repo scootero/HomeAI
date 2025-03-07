@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import { v4 as uuidv4 } from "uuid";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function HomeAI() {
-  const [messages, setMessages] = useState<
-    { id: string; role: string; content: string }[]
-  >([]);
+  const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [chatId, setChatId] = useState<string | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const savedChats = JSON.parse(localStorage.getItem("chatHistory") || "[]");
@@ -38,40 +39,49 @@ export default function HomeAI() {
         body: JSON.stringify({ chatId, message: input }),
       });
       const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { id: uuidv4(), role: "assistant", content: data.reply },
-      ]);
+      setMessages((prev) => [...prev, { id: uuidv4(), role: "assistant", content: data.reply }]);
     } catch (error) {
       console.error("Error fetching response:", error);
     }
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gray-900 text-white">
-      <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex flex-col h-screen bg-gray-900 text-white">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full">
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`mb-4 p-2 rounded-lg ${
-              msg.role === "user" ? "bg-blue-600 ml-auto" : "bg-gray-700"
-            }`}
+            className={`p-3 rounded-lg max-w-fit ${msg.role === "user" ? "bg-blue-600 text-white ml-auto max-w-[75%] text-right rounded-xl px-4 py-2" : "bg-transparent text-gray-300 w-full"}`}
           >
-            {msg.content}
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+              ul: ({ node, ...props }) => <ul className="list-disc pl-5" {...props} />,
+              ol: ({ node, ...props }) => <ol className="list-decimal pl-5" {...props} />,
+              li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+              p: ({ node, ...props }) => <p className="mb-2" {...props} />
+            }}>{msg.content}</ReactMarkdown>
           </div>
         ))}
       </div>
-      <div className="p-4 flex bg-gray-800">
-        <input
-          className="flex-1 p-2 bg-gray-700 text-white rounded-l-lg focus:outline-none"
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-        />
-        <button className="p-2 bg-blue-600 rounded-r-lg" onClick={sendMessage}>
-          <FaPaperPlane />
-        </button>
+      <div className="p-4 flex justify-center bg-gray-800 border-t border-gray-700">
+        <div className="w-[60%] flex items-center bg-gray-700 p-2 rounded-lg">
+          <textarea
+            ref={inputRef}
+            className="w-full bg-transparent text-white p-2 focus:outline-none resize-none max-h-40 overflow-y-auto rounded-md"
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type a message..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+          />
+          <button className="p-2 bg-blue-600 rounded-lg ml-2" onClick={sendMessage}>
+            <FaPaperPlane />
+          </button>
+        </div>
       </div>
     </div>
   );
