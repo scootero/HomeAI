@@ -26,11 +26,19 @@ export default function HomeAI() {
     localStorage.setItem("chatHistory", JSON.stringify(messages));
   }, [messages]);
 
+  const adjustTextareaHeight = () => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 200)}px`;
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim()) return;
     const userMessage = { id: uuidv4(), role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    adjustTextareaHeight();
 
     try {
       const res = await fetch("/api/chat", {
@@ -66,10 +74,13 @@ export default function HomeAI() {
         <div className="w-[60%] flex items-center bg-gray-700 p-2 rounded-lg">
           <textarea
             ref={inputRef}
-            className="w-full bg-transparent text-white p-2 focus:outline-none resize-none max-h-40 overflow-y-auto rounded-md"
+            className="w-full bg-transparent text-white p-2 focus:outline-none resize-none overflow-y-auto max-h-52 rounded-md custom-scrollbar"
             rows={1}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              adjustTextareaHeight();
+            }}
             placeholder="Type a message..."
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
