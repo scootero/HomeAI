@@ -17,6 +17,8 @@ export default function HomeAI() {
   useEffect(() => {
     const savedChats = JSON.parse(localStorage.getItem("chatConversations") || "[]");
     setChats(savedChats);
+    setChatId(null); // Ensures a fresh chat on reload
+    setMessages([]);
   }, []);
 
   useEffect(() => {
@@ -50,21 +52,6 @@ export default function HomeAI() {
     }
   };
 
-  const fetchChatTitle = async (message: string) => {
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId: "new", message: `Please create a very short <4, 3 or less is ideal, for a title of a chat. Just as if you received this message in a new ChatGPT message and you had to name that chat title. Here is the chat message - ${message}` }),
-      });
-      const data = await res.json();
-      return data.reply.replace(/^"|"$/g, '') || "New Chat";
-    } catch (error) {
-      console.error("Error fetching chat title:", error);
-      return "New Chat";
-    }
-  };
-
   const startNewChat = () => {
     setChatId(null);
     setMessages([]);
@@ -78,8 +65,7 @@ export default function HomeAI() {
 
     if (!chatId) {
       currentChatId = uuidv4();
-      const chatTitle = await fetchChatTitle(input);
-      const newChat = { chatId: currentChatId, name: chatTitle };
+      const newChat = { chatId: currentChatId, name: "New Chat" };
       newChats = [...chats, newChat];
       setChats(newChats);
       localStorage.setItem("chatConversations", JSON.stringify(newChats));
@@ -103,6 +89,8 @@ export default function HomeAI() {
     } catch (error) {
       console.error("Error fetching response:", error);
     }
+
+    adjustTextareaHeight();
   };
 
   return (
@@ -110,7 +98,7 @@ export default function HomeAI() {
       {/* Sidebar */}
       <div
         className={`absolute top-0 left-0 h-full bg-gray-800 w-64 p-4 transition-transform z-50 ${sidebarOpen ? "translate-x-0" : "-translate-x-64"}`}
-        onClick={(e) => e.stopPropagation()} // Prevents closing when clicking inside the sidebar
+        onClick={(e) => e.stopPropagation()}
       >
         <button className="text-white mb-4" onClick={() => setSidebarOpen(false)}>
           <FaTimes />
@@ -146,7 +134,10 @@ export default function HomeAI() {
         </div>
 
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full flex flex-col items-center justify-center">
+          {messages.length === 0 && (
+            <div className="text-gray-400 text-xl">What can I help you with?</div>
+          )}
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -155,6 +146,24 @@ export default function HomeAI() {
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
             </div>
           ))}
+        </div>
+
+        {/* Input Box */}
+        <div className="p-4 flex justify-center bg-gray-800 border-t border-gray-700">
+          <textarea
+            ref={inputRef}
+            className="custom-scrollbar w-[60%] bg-transparent text-white p-2 focus:outline-none resize-none overflow-y-auto max-h-52 rounded-md"
+            rows={1}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              adjustTextareaHeight();
+            }}
+            placeholder="Type a message..."
+          />
+          <button className="p-2 bg-blue-600 rounded-lg ml-2" onClick={sendMessage}>
+            <FaPaperPlane />
+          </button>
         </div>
       </div>
     </div>
